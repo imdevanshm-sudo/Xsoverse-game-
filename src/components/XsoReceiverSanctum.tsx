@@ -26,6 +26,44 @@ export interface XsoReceiverSanctumProps {
   onComplete: () => void;
 }
 
+const createEmojiTexture = (emoji: string, color: string) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.Texture();
+    
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, 512, 512);
+    
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 60;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '64px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    for (let i = 0; i < 20; i++) {
+        ctx.save();
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const scale = 0.5 + Math.random() * 1.5;
+        const opacity = 0.2 + Math.random() * 0.6;
+        const rotation = Math.random() * Math.PI * 2;
+        
+        ctx.globalAlpha = opacity;
+        ctx.translate(x, y);
+        ctx.rotate(rotation);
+        ctx.scale(scale, scale);
+        ctx.fillText(emoji, 0, 0);
+        ctx.restore();
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+};
+
 function InspectableArtifact({ children, isCurrent, onInteractStart, onInteractEnd, onClick }: any) {
   const rotX = useFramerSpring(0, { stiffness: 80, damping: 20 });
   const rotY = useFramerSpring(0, { stiffness: 80, damping: 20 });
@@ -100,28 +138,13 @@ function InspectableArtifact({ children, isCurrent, onInteractStart, onInteractE
   );
 }
 
-function PolaroidSlab({ item, position, isCurrent, onInteractStart, onInteractEnd, auraIndex = 0, aestheticVariant = 0, vibe = 'VOID' }: any) {
+function PolaroidSlab({ item, position, isCurrent, onInteractStart, onInteractEnd, auraIndex = 0, aestheticVariant = 0, vibe = 'VOID', flareIntensity = 0.3 }: any) {
     const { gl } = useThree();
     const texture = useTexture(item.url) as THREE.Texture;
     const aura = AURA_TYPES[auraIndex] || AURA_TYPES[0];
     
-    // In LOCATION vibe, use the location background (e.g., from aestheticVariant)
-    // Actually the instructions say: "The Polaroid's envMap should ideally be the same location texture"
-    // So we'll use the same textures whether VOID or LOCATION, but for VOID it's a symbolic high-res texture,
-    // and for LOCATION it's a location image. Let's just use the aura textures either way to satisfy envMap.
-    const envTextureUrl = aura.textures[aestheticVariant] || aura.textures[0];
-    const envTexture = useTexture(envTextureUrl) as THREE.Texture;
-    const targetColor = new THREE.Color(aura.colors[aestheticVariant] || aura.colors[0]);
-    
-    useMemo(() => {
-        envTexture.mapping = THREE.EquirectangularReflectionMapping;
-        envTexture.anisotropy = gl.capabilities.getMaxAnisotropy();
-        envTexture.colorSpace = THREE.SRGBColorSpace;
-        envTexture.minFilter = THREE.LinearFilter;
-        envTexture.magFilter = THREE.LinearFilter;
-        envTexture.generateMipmaps = false;
-        envTexture.needsUpdate = true;
-    }, [envTexture, gl]);
+    const targetColor = new THREE.Color(aura.color);
+    const emojiTexture = useMemo(() => createEmojiTexture(aura.emoji, aura.color), [aura]);
     
     const groupRef = useRef<THREE.Group>(null);
     
@@ -136,35 +159,40 @@ function PolaroidSlab({ item, position, isCurrent, onInteractStart, onInteractEn
             {/* Glowing rim light / aura */}
             <mesh position={[0, 0, -1]}>
                <planeGeometry args={[12, 16]} />
-               <shaderMaterial
-                  transparent
-                  depthWrite={false}
-                  blending={THREE.AdditiveBlending}
-                  uniforms={{ uColor: { value: targetColor } }}
-                  vertexShader={`
-                      varying vec2 vUv;
-                      void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
-                  `}
-                  fragmentShader={`
-                      uniform vec3 uColor;
-                      varying vec2 vUv;
-                      void main() {
-                          float d = distance(vUv, vec2(0.5));
-                          float alpha = smoothstep(0.5, 0.0, d) * 0.4;
-                          gl_FragColor = vec4(uColor, alpha);
-                      }
-                  `}
+               <meshBasicMaterial 
+                   color={targetColor}
+                   transparent={true}
+                   opacity={0.15}
+                   depthWrite={false}
                />
             </mesh>
             <pointLight position={[0, 0, -2]} distance={10} intensity={2} color={targetColor} />
 
             <InspectableArtifact isCurrent={isCurrent} onInteractStart={onInteractStart} onInteractEnd={onInteractEnd}>
+              {/* Backboard / Frame */}
               <RoundedBox args={[3.2, 4.2, 0.2]} radius={0.05}>
                  <meshStandardMaterial color="#111" roughness={0.8} />
               </RoundedBox>
+              {/* Layer 1: Media */}
               <mesh position={[0, 0, 0.101]}>
                  <planeGeometry args={[3.0, 4.0]} />
-                 <meshPhysicalMaterial map={texture} clearcoat={1} roughness={0} metalness={1} envMap={envTexture} envMapIntensity={5} />
+                 <meshStandardMaterial map={texture} />
+              </mesh>
+              {/* Layer 2: Flare */}
+              <mesh position={[0, 0, 0.102]}>
+                 <planeGeometry args={[3.0, 4.0]} />
+                 <meshBasicMaterial 
+                     map={emojiTexture}
+                     transparent={true}
+                     opacity={flareIntensity}
+                     blending={THREE.AdditiveBlending}
+                     depthWrite={false}
+                 />
+              </mesh>
+              {/* Layer 3: Glass */}
+              <mesh position={[0, 0, 0.103]}>
+                 <planeGeometry args={[3.0, 4.0]} />
+                 <meshPhysicalMaterial transparent={true} opacity={0.1} transmission={0.9} clearcoat={1} roughness={0} metalness={0.1} ior={1.5} />
               </mesh>
             </InspectableArtifact>
             {item.title && (
@@ -467,104 +495,55 @@ function CameraRig({ targetPosition, targetLookAt, targetFov = 35 }: { targetPos
 }
 
 export const AURA_TYPES = [
-  { 
-    name: 'Ethereal', 
-    textures: [
-      'https://picsum.photos/seed/heart4k/2048/1024', 
-      'https://picsum.photos/seed/rainbow/2048/1024'
-    ], 
-    colors: ['#ff4d4d', '#4d4dff']
-  },
-  { 
-    name: 'Cosmic', 
-    textures: [
-      'https://picsum.photos/seed/moon4k/2048/1024', 
-      'https://picsum.photos/seed/star4k/2048/1024'
-    ], 
-    colors: ['#4a154b', '#15243b']
-  },
-  { 
-    name: 'Gilded Dust', 
-    textures: [
-      'https://picsum.photos/seed/gilded4k/2048/1024', 
-      'https://picsum.photos/seed/goldcrystal/2048/1024'
-    ], 
-    colors: ['#59421a', '#69522a']
-  },
-  { 
-    name: 'Petal Fall', 
-    textures: [
-      'https://picsum.photos/seed/petal4k/2048/1024', 
-      'https://picsum.photos/seed/sakura4k/2048/1024'
-    ], 
-    colors: ['#66293a', '#76394a']
-  },
-  { 
-    name: 'Cosmic Void', 
-    textures: [
-      'https://picsum.photos/seed/void4k/2048/1024', 
-      'https://picsum.photos/seed/blackhole/2048/1024'
-    ], 
-    colors: ['#050814', '#151824']
-  },
-  { 
-    name: 'Ember Ash', 
-    textures: [
-      'https://picsum.photos/seed/ember4k/2048/1024', 
-      'https://picsum.photos/seed/fire4k/2048/1024'
-    ], 
-    colors: ['#661a00', '#762a10']
-  },
-  { 
-    name: 'Cobalt Rain', 
-    textures: [
-      'https://picsum.photos/seed/cobalt4k/2048/1024', 
-      'https://picsum.photos/seed/ocean4k/2048/1024'
-    ], 
-    colors: ['#101b33', '#202b43']
-  },
-  { 
-    name: 'Prismatic', 
-    textures: [
-      'https://picsum.photos/seed/prism4k/2048/1024', 
-      'https://picsum.photos/seed/neon4k/2048/1024'
-    ], 
-    colors: ['#3a1c4d', '#4a2c5d']
-  },
-  { 
-    name: 'Radiant', 
-    textures: [
-      'https://picsum.photos/seed/radiant4k/2048/1024', 
-      'https://picsum.photos/seed/light4k/2048/1024'
-    ], 
-    colors: ['#5e5436', '#6e6446']
-  }
+  { name: 'Ethereal', emoji: '✨', color: '#4d4dff' },
+  { name: 'Heart', emoji: '❤️', color: '#ff4d4d' },
+  { name: 'Fire', emoji: '🔥', color: '#ff4500' },
+  { name: 'Star', emoji: '🌟', color: '#ffd700' },
+  { name: 'Cosmic', emoji: '🌌', color: '#4a154b' },
+  { name: 'Gilded Dust', emoji: '💫', color: '#59421a' },
+  { name: 'Petal Fall', emoji: '🌸', color: '#66293a' },
+  { name: 'Cosmic Void', emoji: '🌑', color: '#050814' },
+  { name: 'Ember Ash', emoji: '🌋', color: '#661a00' },
+  { name: 'Cobalt Rain', emoji: '💧', color: '#101b33' },
+  { name: 'Prismatic', emoji: '🌈', color: '#3a1c4d' },
+  { name: 'Radiant', emoji: '☀️', color: '#5e5436' }
 ];
 
-function VibeBackground({ auraIndex, aestheticVariant = 0, vibe, blurBg, blockType }: { auraIndex: number, aestheticVariant?: number, vibe: string, blurBg: boolean, blockType: string }) {
+function VibeBackground({ auraIndex, vibe, blurBg, blockType, bgUrl }: { auraIndex: number, vibe: string, blurBg: boolean, blockType: string, bgUrl?: string }) {
     const aura = AURA_TYPES[auraIndex] || AURA_TYPES[0];
     const { scene } = useThree();
-    const map = useTexture(aura.textures[aestheticVariant]) as THREE.Texture;
+    
+    // In LOCATION mode, use the current item's texture, otherwise load a transparent 1x1 image to avoid suspending issues
+    const defaultImg = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    const safeUrl = (blockType === 'image' && bgUrl) ? bgUrl : defaultImg;
+    const bgTexture = useTexture(safeUrl) as THREE.Texture;
+
     const materialRef = useRef<THREE.ShaderMaterial>(null);
     const ambientLightRef = useRef<THREE.AmbientLight>(null);
 
     // Apply color space to background map so it's not washed out when unblurred
     useMemo(() => {
-        map.colorSpace = THREE.SRGBColorSpace;
-    }, [map]);
+        if (bgTexture) bgTexture.colorSpace = THREE.SRGBColorSpace;
+    }, [bgTexture]);
 
     useFrame((_, delta) => {
-        const isBlack = vibe === 'VOID' || blockType !== 'image';
-        const targetColor = isBlack ? new THREE.Color('#000000') : new THREE.Color(aura.colors[aestheticVariant] || '#000');
+        const isVoid = vibe === 'VOID';
+        const bgColor = isVoid ? new THREE.Color('#020104') : new THREE.Color('#000000');
+        
         if (scene.fog && 'color' in scene.fog) {
-            (scene.fog as THREE.Fog).color.lerp(targetColor, delta * 2);
+            (scene.fog as THREE.Fog).color.lerp(bgColor, delta * 2);
         }
         if (scene.background instanceof THREE.Color) {
-            scene.background.lerp(targetColor, delta * 2);
+            scene.background.lerp(bgColor, delta * 2);
         }
+        
+        const ambientTarget = isVoid ? new THREE.Color(aura.color) : new THREE.Color('#ffffff');
+        const ambientIntensity = isVoid ? 0.5 : 1.0; 
         if (ambientLightRef.current) {
-            ambientLightRef.current.color.lerp(targetColor, delta * 2);
+            ambientLightRef.current.color.lerp(ambientTarget, delta * 2);
+            ambientLightRef.current.intensity = THREE.MathUtils.lerp(ambientLightRef.current.intensity, ambientIntensity, delta * 2);
         }
+        
         if (materialRef.current) {
             materialRef.current.uniforms.uTime.value += delta;
             materialRef.current.uniforms.uBlur.value = blurBg ? 1.0 : 0.0;
@@ -584,7 +563,7 @@ function VibeBackground({ auraIndex, aestheticVariant = 0, vibe, blurBg, blockTy
                         transparent
                         depthWrite={false}
                         uniforms={{
-                            uMap: { value: map },
+                            uMap: { value: bgTexture },
                             uTime: { value: 0 },
                             uBlur: { value: blurBg ? 1.0 : 0.0 }
                         }}
@@ -651,6 +630,7 @@ export default function XsoReceiverSanctum({ auraWeight = [1, 1], masterAudioUrl
   const [aestheticVariant, setAestheticVariant] = useState(0);
   const [vibe, setVibe] = useState<'VOID' | 'LOCATION'>('VOID');
   const [blurBg, setBlurBg] = useState(false);
+  const [flareIntensity, setFlareIntensity] = useState(0.3);
 
   // Audio Context exact from original
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -848,7 +828,7 @@ export default function XsoReceiverSanctum({ auraWeight = [1, 1], masterAudioUrl
             <Lightformer form="circle" intensity={1} color="#ff0000" position={[0, 10, -5]} scale={20} />
           </Environment>
 
-          <VibeBackground auraIndex={auraIndex} aestheticVariant={aestheticVariant} vibe={vibe} blurBg={blurBg} blockType={media[currentIndex]?.type || 'image'} />
+          <VibeBackground auraIndex={auraIndex} vibe={vibe} blurBg={blurBg} blockType={media[currentIndex]?.type || 'image'} bgUrl={media[currentIndex]?.url} />
 
           {vibe === 'VOID' && <AudioReactiveSymphony audioRef={masterAudioRef} />}
 
@@ -859,7 +839,7 @@ export default function XsoReceiverSanctum({ auraWeight = [1, 1], masterAudioUrl
             const isCurrent = currentIndex === i;
             return (
               <group key={item.id}>
-                {item.type === 'image' && <PolaroidSlab item={item} position={pos} auraIndex={auraIndex} aestheticVariant={aestheticVariant} vibe={vibe} isCurrent={isCurrent} onInteractStart={() => {isInteracting.current = true}} onInteractEnd={() => {isInteracting.current = false}} />}
+                {item.type === 'image' && <PolaroidSlab item={item} position={pos} auraIndex={auraIndex} aestheticVariant={aestheticVariant} vibe={vibe} flareIntensity={flareIntensity} isCurrent={isCurrent} onInteractStart={() => {isInteracting.current = true}} onInteractEnd={() => {isInteracting.current = false}} />}
                 {item.type === 'audio' && <CassetteArchive item={item} position={pos} isCurrent={isCurrent} onInteractStart={() => {isInteracting.current = true}} onInteractEnd={() => {isInteracting.current = false}} />}
                 {item.type === 'video' && <IMAXMonolith item={item} position={pos} isCurrent={isCurrent} onInteractStart={() => {isInteracting.current = true}} onInteractEnd={() => {isInteracting.current = false}} />}
               </group>
@@ -924,6 +904,18 @@ export default function XsoReceiverSanctum({ auraWeight = [1, 1], masterAudioUrl
             </div>
          </div>
          
+         <div className="flex flex-col gap-2 mt-2">
+            <div className="text-white/30 text-[10px] tracking-[0.2em] font-mono mb-2 border-b border-white/10 pb-2">FLARE INTENSITY</div>
+            <input 
+                type="range" 
+                min="0" max="1" step="0.01" 
+                value={flareIntensity} 
+                onChange={(e) => setFlareIntensity(parseFloat(e.target.value))}
+                className="w-full accent-white"
+            />
+         </div>
+         
+         {/* @ts-ignore */}
          {AURA_TYPES[auraIndex] && AURA_TYPES[auraIndex].textures && (
             <div className="flex flex-col gap-2 mt-2">
                 <div className="text-white/30 text-[10px] tracking-[0.2em] font-mono mb-2 border-b border-white/10 pb-2">VARIANT</div>
