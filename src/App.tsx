@@ -714,6 +714,45 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Ambient background glow behind the pearl (tonal falloff, no stars, no sections) */}
+      <AnimatePresence>
+        {isOpeningScreen && (
+          <motion.div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none z-0"
+            style={{
+              background: 'radial-gradient(circle, rgba(40, 36, 32, 0.12) 0%, rgba(10, 10, 10, 0) 70%)',
+              filter: 'blur(80px)',
+            }}
+            animate={{ 
+              opacity: appState === 'FOCUSED_INITIAL' ? 0.05 : 1,
+              scale: appState === 'FOCUSED_INITIAL' ? 0.95 : 1
+            }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Layer 3: Typography (Spatially stable, does not scale with pearl) */}
+      <AnimatePresence>
+        {isOpeningScreen && (
+          <motion.div
+            key="opening-typography"
+            className="absolute left-1/2 -translate-x-1/2 pointer-events-none text-center z-30 top-[calc(50%+16vh+45px)] md:top-[calc(50%+19vh+55px)]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: appState === 'FOCUSED_INITIAL' ? 0 : 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+          >
+            <p className="text-[12px] sm:text-[14px] md:text-[15px] tracking-[0.16em] font-light text-[#eceae5] font-serif">
+              Someone left this for you.
+            </p>
+            <p className="mt-7 text-[8.5px] sm:text-[9.5px] tracking-[0.22em] font-light text-white/30 uppercase">
+              Touch to open
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* The Central Artifact */}
       <AnimatePresence>
       {(showPearl || appState === 'FRACTURE') && (
@@ -736,7 +775,7 @@ export default function App() {
           animate={{
             x: 0,
             y: appState === 'RELEASED_ORBIT' ? -250 : isOpeningScreen ? 0 : isHoldingPearl ? 0 : isCoolingPhase ? 0 : [-8, 8, -8],
-            scale: isOpeningScreen ? (appState === 'FOCUSED_INITIAL' ? 1.08 : 1) : appState === 'RELEASED_ORBIT' ? 0 : appState === 'RITUAL_HOLD' ? 0.9 : appState === 'RECORDING_VOICE' ? 0.98 : appState === 'VOICE_READY_TO_RELEASE' ? 0.95 : isCoolingPhase ? 0.9 : [1, 1.03, 1],
+            scale: isOpeningScreen ? (appState === 'FOCUSED_INITIAL' ? 1.04 : 1) : appState === 'RELEASED_ORBIT' ? 0 : appState === 'RITUAL_HOLD' ? 0.9 : appState === 'RECORDING_VOICE' ? 0.98 : appState === 'VOICE_READY_TO_RELEASE' ? 0.95 : isCoolingPhase ? 0.9 : [1, 1.03, 1],
             opacity: appState === 'REEMERGENCE' ? 0.3 : appState === 'RELEASED_ORBIT' ? 0 : isCoolingPhase ? 1 : 1, // Full opacity when cooled
             rotateZ: isOpeningScreen ? (appState === 'FOCUSED_INITIAL' ? 0 : 0) : 0,
           }}
@@ -754,34 +793,18 @@ export default function App() {
           }}
         >
           {isOpeningScreen && (
-            <>
-              <motion.div
-                className="absolute inset-[-18%] rounded-full pointer-events-none"
-                style={{
-                  background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 30%, transparent 65%)',
-                  filter: 'blur(30px)',
-                }}
-                animate={{ opacity: appState === 'FOCUSED_INITIAL' ? 0.6 : isOpeningFocused ? 0.4 : [0.18, 0.25, 0.18], scale: appState === 'FOCUSED_INITIAL' ? 1.15 : 1 }}
-                transition={{
-                  opacity: appState === 'FOCUSED_INITIAL' ? { duration: 0.45, ease: 'easeOut' } : { duration: 6, repeat: Infinity, ease: 'easeInOut' },
-                  scale: { duration: 0.5, ease: 'easeOut' },
-                }}
-              />
-              <motion.div
-                className="absolute left-1/2 top-[100%] w-[180%] -translate-x-1/2 pointer-events-none text-center"
-                style={{ marginTop: '50px' }}
-                initial={false}
-                animate={{ opacity: appState === 'FOCUSED_INITIAL' ? 0.8 : 1 }}
-                transition={{ duration: 0.35, ease: 'easeOut' }}
-              >
-                <p className="text-[12px] sm:text-[14px] md:text-[15px] tracking-[0.16em] font-light text-[#eceae5] font-serif">
-                  Someone left this for you.
-                </p>
-                <p className="mt-7 text-[8.5px] sm:text-[9.5px] tracking-[0.22em] font-light text-white/30 uppercase">
-                  Touch to open
-                </p>
-              </motion.div>
-            </>
+            <motion.div
+              className="absolute inset-[-18%] rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 30%, transparent 65%)',
+                filter: 'blur(30px)',
+              }}
+              animate={{ opacity: appState === 'FOCUSED_INITIAL' ? 0.6 : isOpeningFocused ? 0.4 : [0.18, 0.25, 0.18], scale: appState === 'FOCUSED_INITIAL' ? 1.15 : 1 }}
+              transition={{
+                opacity: appState === 'FOCUSED_INITIAL' ? { duration: 0.45, ease: 'easeOut' } : { duration: 6, repeat: Infinity, ease: 'easeInOut' },
+                scale: { duration: 0.5, ease: 'easeOut' },
+              }}
+            />
           )}
           
           {appState === 'FRACTURE' ? (
@@ -823,6 +846,7 @@ export default function App() {
                     isActive={isHoldingPearl}
                     openingMode={isOpeningScreen}
                     color={appState === 'RITUAL_HOLD' || appState === 'RECORDING_VOICE' ? '#ff0055' : '#8b5cf6'}
+                    emotion="anonymous"
                   />
                 </Suspense>
               </div>

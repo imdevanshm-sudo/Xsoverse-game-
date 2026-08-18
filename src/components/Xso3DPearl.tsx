@@ -8,15 +8,35 @@ interface Xso3DPearlProps {
   isActive?: boolean;
   color?: string;
   openingMode?: boolean;
+  emotion?: 'love' | 'friendship' | 'family' | 'gratitude' | 'memory' | 'anonymous';
 }
 
-function PearlCore({ isActive, color, openingMode }: { isActive: boolean; color: string; openingMode: boolean }) {
+function PearlCore({ 
+  isActive, 
+  color, 
+  openingMode, 
+  emotion = 'anonymous' 
+}: { 
+  isActive: boolean; 
+  color: string; 
+  openingMode: boolean; 
+  emotion?: string;
+}) {
   const outerMaterialRef = useRef<any>(null);
   const innerMaterialRef = useRef<any>(null);
   const lightRef = useRef<THREE.PointLight>(null);
   const shellGlowRef = useRef<THREE.PointLight>(null);
+  const groupRef = useRef<THREE.Group>(null);
 
   useFrame((state, delta) => {
+    // Physical interactive rotation of the pearl's outer layers to shift surface reflections
+    if (groupRef.current) {
+      const targetRotY = isActive ? 0.35 : 0;
+      const targetRotX = isActive ? -0.15 : 0;
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotY, delta * 3.5);
+      groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, targetRotX, delta * 3.5);
+    }
+
     if (innerMaterialRef.current) {
       // Smoothly interpolate distort and speed based on isActive
       const targetDistort = isActive ? 0.24 : openingMode ? 0.06 : 0.2;
@@ -72,7 +92,7 @@ function PearlCore({ isActive, color, openingMode }: { isActive: boolean; color:
   });
 
   return (
-    <group>
+    <group ref={groupRef}>
       {/* Elegant highlight for the opening screen */}
       {openingMode && <directionalLight position={[2, 4, 3]} intensity={1.5} color="#ffffff" />}
       
@@ -112,45 +132,80 @@ function PearlCore({ isActive, color, openingMode }: { isActive: boolean; color:
   );
 }
 
-export default function Xso3DPearl({ isActive = false, color = '#8b5cf6', openingMode = false }: Xso3DPearlProps) {
+const renderEmotionalLightformers = (emotion: string) => {
+  switch (emotion) {
+    case 'love':
+      return (
+        <>
+          <Lightformer form="rect" intensity={0.25} color="#faf8f5" scale={[8, 8, 1]} position={[0, 4, -8]} />
+          {/* Two subtle warm lights gently converging (closer together) */}
+          <Lightformer form="circle" intensity={1.6} color="#ffebee" scale={[1.6, 1.6, 1]} position={[-0.8, 1.2, -3]} target={[0, 0, 0]} />
+          <Lightformer form="circle" intensity={1.4} color="#fdf2f8" scale={[1.4, 1.4, 1]} position={[0.8, 1.0, -3]} target={[0, 0, 0]} />
+        </>
+      );
+    case 'friendship':
+      return (
+        <>
+          <Lightformer form="rect" intensity={0.25} color="#faf8f5" scale={[8, 8, 1]} position={[0, 4, -8]} />
+          {/* Two independent lights coexisting and softly overlapping */}
+          <Lightformer form="circle" intensity={1.3} color="#f0fdf4" scale={[1.8, 1.8, 1]} position={[-2.5, 1.8, -3.5]} target={[0, 0, 0]} />
+          <Lightformer form="circle" intensity={1.3} color="#ecfeff" scale={[1.8, 1.8, 1]} position={[2.5, 1.2, -3.5]} target={[0, 0, 0]} />
+        </>
+      );
+    case 'family':
+      return (
+        <>
+          <Lightformer form="rect" intensity={0.25} color="#faf8f5" scale={[8, 8, 1]} position={[0, 4, -8]} />
+          {/* A warmer central glow with surrounding subtle light */}
+          <Lightformer form="rect" intensity={0.6} color="#ffedd5" scale={[6, 6, 1]} position={[0, 2, -6]} target={[0, 0, 0]} />
+          <Lightformer form="circle" intensity={1.5} color="#fffbeb" scale={[2.5, 2.5, 1]} position={[0, 0, -4]} target={[0, 0, 0]} />
+        </>
+      );
+    case 'gratitude':
+      return (
+        <>
+          <Lightformer form="rect" intensity={0.25} color="#faf8f5" scale={[8, 8, 1]} position={[0, 4, -8]} />
+          {/* A soft glow expanding/radiating outward */}
+          <Lightformer form="ring" intensity={1.8} color="#fef8e0" scale={[5, 5, 1]} position={[0, 0, -4]} target={[0, 0, 0]} />
+        </>
+      );
+    case 'memory':
+      return (
+        <>
+          <Lightformer form="rect" intensity={0.25} color="#faf8f5" scale={[8, 8, 1]} position={[0, 4, -8]} />
+          {/* Light slowly appearing and fading like a remembered presence */}
+          <Lightformer form="circle" intensity={0.8} color="#fafaf9" scale={[4, 4, 1]} position={[-1, 1, -5]} target={[0, 0, 0]} />
+        </>
+      );
+    case 'anonymous':
+    default:
+      return (
+        <>
+          {/* Default neutral warm illumination with abstract coexisting shapes */}
+          <Lightformer form="rect" intensity={0.25} color="#faf8f5" scale={[8, 8, 1]} position={[0, 4, -8]} />
+          <Lightformer form="circle" intensity={1.4} color="#fefaf0" scale={[1.8, 1.8, 1]} position={[-2.2, 1.5, -2.5]} target={[0, 0, 0]} />
+          <Lightformer form="circle" intensity={1.1} color="#ffebd3" scale={[1.5, 1.5, 1]} position={[2.5, 2.2, -2.8]} target={[0, 0, 0]} />
+          <Lightformer form="ring" intensity={0.4} color="#eae6df" scale={[4, 4, 1]} position={[0, 0, -5]} target={[0, 0, 0]} />
+        </>
+      );
+  }
+};
+
+export default function Xso3DPearl({ 
+  isActive = false, 
+  color = '#8b5cf6', 
+  openingMode = false,
+  emotion = 'anonymous'
+}: Xso3DPearlProps) {
   return (
     <div className="w-full h-full relative pointer-events-none">
       <Canvas camera={{ position: [0, 0, 3], fov: 45 }}>
         <React.Suspense fallback={null}>
-          <Environment preset={openingMode ? "city" : "studio"} environmentIntensity={openingMode ? 0.06 : 0.35}>
-            {openingMode && (
-              <>
-                {/* Ambient warm interior room tone reflection */}
-                <Lightformer
-                  form="rect"
-                  intensity={0.4}
-                  color="#faf8f5"
-                  scale={[10, 10, 1]}
-                  position={[0, 5, -10]}
-                />
-                {/* Soft warm-neutral window-like reflection (the "someone's room" presence) */}
-                <Lightformer
-                  form="rect"
-                  intensity={1.2}
-                  color="#ffebd3" // warm window incandescent glow
-                  scale={[2.5, 4, 1]}
-                  position={[-3, 2, -3]}
-                  target={[0, 0, 0]}
-                />
-                {/* Secondary window light pane for parallax depth in reflection */}
-                <Lightformer
-                  form="rect"
-                  intensity={0.6}
-                  color="#f5efe6"
-                  scale={[1.5, 3, 1]}
-                  position={[4, 3, -2]}
-                  target={[0, 0, 0]}
-                />
-              </>
-            )}
+          <Environment preset={openingMode ? undefined : "studio"} environmentIntensity={openingMode ? 0.08 : 0.35}>
+            {openingMode && renderEmotionalLightformers(emotion)}
           </Environment>
           
-          <PearlCore isActive={isActive} color={color} openingMode={openingMode} />
+          <PearlCore isActive={isActive} color={color} openingMode={openingMode} emotion={emotion} />
 
           <EffectComposer>
             <Bloom luminanceThreshold={openingMode ? 0.95 : 0.85} mipmapBlur intensity={openingMode ? 0.08 : 0.7} />
