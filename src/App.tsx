@@ -693,7 +693,7 @@ export default function App() {
       {(showPearl || appState === 'FRACTURE') && (
         <motion.div
           key="central-artifact"
-          className="relative z-10 w-[66vw] h-[66vw] max-w-[360px] max-h-[360px] min-w-[220px] min-h-[220px] md:w-[60vw] md:h-[60vw] md:max-w-[420px] md:max-h-[420px] rounded-full cursor-pointer pointer-events-auto"
+          className="relative z-10 w-[32vh] h-[32vh] md:w-[38vh] md:h-[38vh] min-w-[240px] min-h-[240px] max-w-[600px] max-h-[600px] rounded-full cursor-pointer pointer-events-auto"
           style={{ willChange: 'transform' }}
           onPointerDown={handlePearlPointerDown}
           onPointerUp={handlePointerUp}
@@ -710,9 +710,9 @@ export default function App() {
           animate={{
             x: 0,
             y: appState === 'RELEASED_ORBIT' ? -250 : isOpeningScreen ? 0 : isHoldingPearl ? 0 : isCoolingPhase ? 0 : [-8, 8, -8],
-            scale: isOpeningScreen ? (appState === 'FOCUSED_INITIAL' ? 0.935 : 1) : appState === 'RELEASED_ORBIT' ? 0 : appState === 'RITUAL_HOLD' ? 0.9 : appState === 'RECORDING_VOICE' ? 0.98 : appState === 'VOICE_READY_TO_RELEASE' ? 0.95 : isCoolingPhase ? 0.9 : [1, 1.03, 1],
+            scale: isOpeningScreen ? (appState === 'FOCUSED_INITIAL' ? 1.08 : 1) : appState === 'RELEASED_ORBIT' ? 0 : appState === 'RITUAL_HOLD' ? 0.9 : appState === 'RECORDING_VOICE' ? 0.98 : appState === 'VOICE_READY_TO_RELEASE' ? 0.95 : isCoolingPhase ? 0.9 : [1, 1.03, 1],
             opacity: appState === 'REEMERGENCE' ? 0.3 : appState === 'RELEASED_ORBIT' ? 0 : isCoolingPhase ? 1 : 1, // Full opacity when cooled
-            rotateZ: isOpeningScreen ? (appState === 'FOCUSED_INITIAL' ? 1.4 : 0) : 0,
+            rotateZ: isOpeningScreen ? (appState === 'FOCUSED_INITIAL' ? 0 : 0) : 0,
           }}
           transition={{
             x: appState === 'RELEASED_ORBIT' ? { duration: 4, ease: [0.65, 0, 0.35, 1] } : { duration: 0.5 },
@@ -732,27 +732,27 @@ export default function App() {
               <motion.div
                 className="absolute inset-[-18%] rounded-full pointer-events-none"
                 style={{
-                  background: 'radial-gradient(circle, rgba(167,155,235,0.16) 0%, rgba(92,84,132,0.08) 26%, transparent 62%)',
-                  filter: 'blur(26px)',
+                  background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 30%, transparent 65%)',
+                  filter: 'blur(30px)',
                 }}
-                animate={{ opacity: appState === 'FOCUSED_INITIAL' ? 0.34 : isOpeningFocused ? 0.3 : [0.18, 0.24, 0.18], scale: appState === 'FOCUSED_INITIAL' ? 0.98 : 1 }}
+                animate={{ opacity: appState === 'FOCUSED_INITIAL' ? 0.6 : isOpeningFocused ? 0.4 : [0.18, 0.25, 0.18], scale: appState === 'FOCUSED_INITIAL' ? 1.15 : 1 }}
                 transition={{
                   opacity: appState === 'FOCUSED_INITIAL' ? { duration: 0.45, ease: 'easeOut' } : { duration: 6, repeat: Infinity, ease: 'easeInOut' },
                   scale: { duration: 0.5, ease: 'easeOut' },
                 }}
               />
               <motion.div
-                className="absolute left-1/2 top-1/2 w-[140%] -translate-x-1/2 pointer-events-none text-center"
-                style={{ y: 'calc(50% + 150px)' }}
+                className="absolute left-1/2 top-[100%] w-[180%] -translate-x-1/2 pointer-events-none text-center"
+                style={{ marginTop: '50px' }}
                 initial={false}
-                animate={{ opacity: appState === 'FOCUSED_INITIAL' ? 0.72 : 1 }}
+                animate={{ opacity: appState === 'FOCUSED_INITIAL' ? 0.8 : 1 }}
                 transition={{ duration: 0.35, ease: 'easeOut' }}
               >
-                <p className="text-[10px] sm:text-[11px] tracking-[0.38em] font-light text-white/58">
+                <p className="text-[11px] sm:text-[13px] md:text-[15px] tracking-[0.25em] font-light text-white/80 font-serif">
                   SOMETHING WAS LEFT FOR YOU
                 </p>
-                <p className="mt-3 text-[9px] sm:text-[10px] tracking-[0.55em] font-light text-white/32">
-                  ENTER
+                <p className="mt-8 text-[9px] sm:text-[10px] tracking-[0.4em] font-light text-white/40 uppercase">
+                  TOUCH TO OPEN
                 </p>
               </motion.div>
             </>
