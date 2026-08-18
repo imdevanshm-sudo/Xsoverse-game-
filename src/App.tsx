@@ -387,9 +387,8 @@ export default function App() {
       if (navigator.vibrate) navigator.vibrate([30, 50, 40]);
 
       holdTimeoutRef.current = setTimeout(() => {
-        setAppState('VIDEO');
-        if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]); 
-      }, INITIAL_HOLD_DURATION);
+        setAppState('MEMORY_CANVAS'); // Directly transition to existing XSO timeline
+      }, 4000); // 4-second physical pearl transition
     } 
     else if (appState === 'REEMERGENCE') {
       setAppState('RITUAL_HOLD');
@@ -401,7 +400,7 @@ export default function App() {
         if (navigator.vibrate) navigator.vibrate([200, 50, 100, 30, 200, 30, 100]); 
       }, RITUAL_HOLD_DURATION);
     }
-    else if (appState === 'VOICE_PROMPT' || appState === 'VOICE_READY_TO_RELEASE') {
+    else if (appState === 'VOICE_PROMPT' || appState === 'RECORDING_VOICE' || appState === 'VOICE_READY_TO_RELEASE') {
       // User acts as push-to-talk
       setAppState('RECORDING_VOICE');
       if (navigator.vibrate) navigator.vibrate(30);
@@ -417,9 +416,8 @@ export default function App() {
     if (navigator.vibrate) navigator.vibrate([30, 50, 40]);
 
     holdTimeoutRef.current = setTimeout(() => {
-      setAppState('VIDEO');
-      if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
-    }, INITIAL_HOLD_DURATION);
+      setAppState('MEMORY_CANVAS'); // Directly transition to existing XSO timeline
+    }, 4000); // 4-second physical pearl transition
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -446,14 +444,16 @@ export default function App() {
   const handlePointerUp = (e?: React.SyntheticEvent) => {
     pointerStateRef.current = { startY: 0, isDragging: false };
 
-    if (holdTimeoutRef.current) {
-      clearTimeout(holdTimeoutRef.current);
-      holdTimeoutRef.current = null;
+    // Do NOT clear the timeout or cancel the transition once the unsealing has started
+    if (appState !== 'FOCUSED_INITIAL') {
+      if (holdTimeoutRef.current) {
+        clearTimeout(holdTimeoutRef.current);
+        holdTimeoutRef.current = null;
+      }
     }
 
     if (appState === 'FOCUSED_INITIAL') {
-      setAppState('IDLE');
-      if (navigator.vibrate) navigator.vibrate(20);
+      // Do nothing, let the 4-second transition run and execute setAppState('MEMORY_CANVAS')
     } else if (appState === 'RITUAL_HOLD') {
       // Penalty: Instantly dims and resets
       setAppState('REEMERGENCE');

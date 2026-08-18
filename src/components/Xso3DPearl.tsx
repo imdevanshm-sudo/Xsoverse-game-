@@ -27,67 +27,101 @@ function PearlCore({
   const lightRef = useRef<THREE.PointLight>(null);
   const shellGlowRef = useRef<THREE.PointLight>(null);
   const groupRef = useRef<THREE.Group>(null);
+  const activeTimeRef = useRef(0);
 
   useFrame((state, delta) => {
-    // Physical interactive rotation of the pearl's outer layers to shift surface reflections
+    if (isActive && openingMode) {
+      activeTimeRef.current = Math.min(4.0, activeTimeRef.current + delta);
+    } else if (!isActive && openingMode) {
+      activeTimeRef.current = Math.max(0, activeTimeRef.current - delta * 2);
+    }
+
+    const t = activeTimeRef.current;
+
+    // --- Dynamic parameters based on the 0.0 - 4.0s transition timeline ---
+    
+    // Phase 1 (0.0 - 0.8s): Subtle physical response & surface reflection shifts
+    const targetRotY = t > 0 ? (Math.min(0.8, t) / 0.8) * 0.45 : 0;
+    const targetRotX = t > 0 ? (Math.min(0.8, t) / 0.8) * -0.2 : 0;
+    
     if (groupRef.current) {
-      const targetRotY = isActive ? 0.35 : 0;
-      const targetRotX = isActive ? -0.15 : 0;
       groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotY, delta * 3.5);
       groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, targetRotX, delta * 3.5);
     }
 
+    // Phase 2 (0.8 - 1.8s): Internal light begins to appear (soft warm-neutral)
+    let targetInnerEmissive = 0.28;
+    let targetPointLight = 0.25;
+    
+    if (t > 0.8) {
+      const progress = Math.min(1.0, (t - 0.8) / 1.0); // 0.0 to 1.0
+      targetInnerEmissive = 0.28 + progress * 0.65; // grows to 0.93 (soft warm-neutral)
+      targetPointLight = 0.25 + progress * 0.95; // point light illuminates interior
+    }
+
+    // Phase 3 (1.8 - 3.0s): Pearl becomes more translucent/luminous
+    let targetRoughness = 0.22;
+    let targetThickness = 3.5;
+    
+    if (t > 1.8) {
+      const progress = Math.min(1.0, (t - 1.8) / 1.2); // 0.0 to 1.0
+      targetRoughness = 0.22 - progress * 0.12; // drops to 0.10 (clearer)
+      targetThickness = 3.5 - progress * 1.5; // drops to 2.0 (thinner shell)
+      targetInnerEmissive = 0.93 + progress * 0.32; // emissive goes up to 1.25
+      targetPointLight = 1.2 + progress * 0.6; // point light goes up to 1.8
+    }
+
+    // Phase 4 (3.0 - 4.0s): Pearl dissolves and releases its light
+    let targetOpacity = 1.0;
+    let targetScale = 1.0;
+    
+    if (t > 3.0) {
+      const progress = Math.min(1.0, (t - 3.0) / 1.0); // 0.0 to 1.0
+      targetOpacity = 1.0 - progress; // fades to 0
+      targetScale = 1.0 + progress * 0.25; // swells slightly as it dissolves
+      targetInnerEmissive = 1.25 * (1.0 - progress); // fade core as it spreads
+      targetPointLight = 1.8 + progress * 2.5; // point light flares out
+    }
+
+    // Apply values with lerp for smooth physical transitions
     if (innerMaterialRef.current) {
-      // Smoothly interpolate distort and speed based on isActive
-      const targetDistort = isActive ? 0.24 : openingMode ? 0.06 : 0.2;
-      const targetSpeed = isActive ? 1.6 : openingMode ? 0.12 : 1;
-      
-      innerMaterialRef.current.distort = THREE.MathUtils.lerp(innerMaterialRef.current.distort, targetDistort, delta * 5);
-      innerMaterialRef.current.speed = THREE.MathUtils.lerp(innerMaterialRef.current.speed, targetSpeed, delta * 5);
-      
-      // Extremely slow 5-second breathing cycle (2 * PI / 5 ≈ 1.25)
-      const breath = Math.sin(state.clock.elapsedTime * 1.25);
-      const baseEmissive = isActive ? 1.45 : openingMode ? (0.28 + breath * 0.03) : 1.25;
-      
+      const baseDistort = isActive ? 0.15 : 0.06;
+      innerMaterialRef.current.distort = THREE.MathUtils.lerp(innerMaterialRef.current.distort, baseDistort, delta * 4);
       innerMaterialRef.current.emissiveIntensity = THREE.MathUtils.lerp(
         innerMaterialRef.current.emissiveIntensity,
-        baseEmissive,
-        delta * 3.5,
+        targetInnerEmissive,
+        delta * 4,
       );
-    }
-    
-    if (outerMaterialRef.current) {
-      outerMaterialRef.current.chromaticAberration = THREE.MathUtils.lerp(
-        outerMaterialRef.current.chromaticAberration,
-        openingMode ? 0.005 : 0.05,
-        delta * 3,
-      );
-      outerMaterialRef.current.roughness = THREE.MathUtils.lerp(
-        outerMaterialRef.current.roughness,
-        openingMode ? 0.22 : 0.06,
-        delta * 3,
-      );
-      outerMaterialRef.current.thickness = THREE.MathUtils.lerp(
-        outerMaterialRef.current.thickness,
-        openingMode ? 3.5 : 1.9,
-        delta * 3,
+      innerMaterialRef.current.opacity = THREE.MathUtils.lerp(
+        innerMaterialRef.current.opacity,
+        targetOpacity,
+        delta * 4,
       );
     }
 
+    if (outerMaterialRef.current) {
+      outerMaterialRef.current.roughness = THREE.MathUtils.lerp(outerMaterialRef.current.roughness, targetRoughness, delta * 4);
+      outerMaterialRef.current.thickness = THREE.MathUtils.lerp(outerMaterialRef.current.thickness, targetThickness, delta * 4);
+      outerMaterialRef.current.opacity = THREE.MathUtils.lerp(outerMaterialRef.current.opacity, targetOpacity, delta * 4);
+    }
+
     if (lightRef.current) {
-      const targetIntensity = isActive ? 1.4 : openingMode ? 0.25 : 0.9;
-      lightRef.current.intensity = THREE.MathUtils.lerp(lightRef.current.intensity, targetIntensity, delta * 5);
+      lightRef.current.intensity = THREE.MathUtils.lerp(lightRef.current.intensity, targetPointLight, delta * 4);
     }
 
     if (shellGlowRef.current) {
       const breath = Math.sin(state.clock.elapsedTime * 1.25);
-      const pulse = 0.16 + breath * 0.03; // tiny internal luminance variation
-      const targetShellIntensity = isActive ? 0.8 : openingMode ? pulse : 0.6;
+      const pulse = 0.16 + breath * 0.03;
+      const targetShellIntensity = isActive ? (t > 3.0 ? 0 : 0.6) : pulse;
       shellGlowRef.current.intensity = THREE.MathUtils.lerp(
         shellGlowRef.current.intensity,
         targetShellIntensity,
         delta * 3,
       );
+    }
+
+    if (groupRef.current) {
+      groupRef.current.scale.setScalar(THREE.MathUtils.lerp(groupRef.current.scale.x, targetScale, delta * 4));
     }
   });
 
