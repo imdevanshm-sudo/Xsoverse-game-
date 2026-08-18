@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { samplePlayerManifest, sampleXso } from './xso/sample';
 
 // Lazy-load heavy Three.js components — they'll be downloaded only when first rendered
 const XsoReceiverSanctum = lazy(() => import('./components/XsoReceiverSanctum'));
@@ -164,6 +165,7 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>('IDLE');
   const [shareEcho, setShareEcho] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [isOpeningFocused, setIsOpeningFocused] = useState(false);
 
   const stars = useMemo(() => Array.from({ length: 60 }).map((_, i) => (
     <motion.div 
@@ -380,6 +382,20 @@ export default function App() {
     }
   };
 
+  const handleOpeningKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (appState !== 'IDLE') return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+
+    setAppState('FOCUSED_INITIAL');
+    if (navigator.vibrate) navigator.vibrate([30, 50, 40]);
+
+    holdTimeoutRef.current = setTimeout(() => {
+      setAppState('VIDEO');
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
+    }, INITIAL_HOLD_DURATION);
+  };
+
   const handlePointerMove = (e: React.PointerEvent) => {
     if ((appState === 'REEMERGENCE' || appState === 'RITUAL_HOLD') && pointerStateRef.current.startY > 0) {
       const deltaY = pointerStateRef.current.startY - e.clientY;
@@ -426,6 +442,7 @@ export default function App() {
   const showPearl = appState === 'IDLE' || appState === 'FOCUSED_INITIAL' || appState === 'REEMERGENCE' || appState === 'RITUAL_HOLD' || appState === 'VOICE_PROMPT' || appState === 'RECORDING_VOICE' || appState === 'VOICE_READY_TO_RELEASE' || appState === 'RELEASED_ORBIT';
   const isHoldingPearl = appState === 'FOCUSED_INITIAL' || appState === 'RITUAL_HOLD';
   const isCoolingPhase = appState === 'VOICE_PROMPT' || appState === 'RECORDING_VOICE' || appState === 'VOICE_READY_TO_RELEASE' || appState === 'RELEASED_ORBIT';
+  const isOpeningScreen = appState === 'IDLE' || appState === 'FOCUSED_INITIAL';
 
   return (
     <div
@@ -500,13 +517,8 @@ export default function App() {
           <Suspense fallback={<div className="w-full h-full bg-black" />}>
             <XsoReceiverSanctum 
               auraWeight={[1, 1]}
-              masterAudioUrl="https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg"
-              media={[
-                { id: '1', type: 'image', url: 'https://picsum.photos/seed/kyoto/800/800', title: 'Summer in Kyoto - 2024', voiceNoteUrl: 'https://actions.google.com/sounds/v1/human_voices/human_voice_clip.ogg' },
-                { id: '3', type: 'video', url: '/video.mp4', title: 'Night Ride' },
-                { id: '2', type: 'audio', url: '/Easy on Me Now.mp3', title: 'Voice Note from Taylor', duration: '0:42' },
-                { id: '4', type: 'image', url: 'https://picsum.photos/seed/drive/800/800', title: 'The drive back home...', voiceNoteUrl: 'https://actions.google.com/sounds/v1/water/rain_on_roof.ogg' }
-              ]}
+              masterAudioUrl={samplePlayerManifest.masterAudioUrl ?? ''}
+              media={samplePlayerManifest.media}
               onComplete={() => setAppState('IDLE_DARK')}
             />
           </Suspense>
@@ -528,7 +540,7 @@ export default function App() {
               
               {/* Top Typography */}
               <p className="text-[#FDFBF7] opacity-85 text-[13px] md:text-base tracking-[0.2em] md:tracking-[0.25em] font-light">
-                Crafted by Alex
+                  Crafted by {sampleXso.identity.senderName}
               </p>
 
               {/* The Ember */}
@@ -546,10 +558,14 @@ export default function App() {
               {/* Bottom Typography */}
               <div className="flex flex-col items-center text-center space-y-8 md:space-y-12 text-[#FDFBF7] opacity-85 text-[13px] md:text-base tracking-[0.2em] md:tracking-[0.25em] font-light">
                 <p>
-                  Unsealed by Taylor
+                  Unsealed by {sampleXso.identity.recipientName}
                 </p>
                 <p>
-                  April 22, 2026
+                  {new Date(sampleXso.createdAt).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
                 </p>
               </div>
               
@@ -624,22 +640,26 @@ export default function App() {
         className="absolute inset-0 z-0"
         style={{ willChange: 'transform' }}
         animate={{
-          scale: appState === 'FOCUSED_INITIAL' ? 1.05 : [1.02, 1, 1.02],
+          scale: isOpeningScreen ? 1 : [1.02, 1, 1.02],
         }}
         transition={{
           duration: appState === 'FOCUSED_INITIAL' ? 1.5 : BREATH_DURATION,
-          repeat: appState === 'FOCUSED_INITIAL' ? 0 : Infinity,
+          repeat: isOpeningScreen ? 0 : Infinity,
           ease: 'easeInOut',
         }}
       >
-        <BackgroundParticles isDark={isDarkPhase} />
+        <BackgroundParticles isDark={isDarkPhase || isOpeningScreen} />
         
         {/* Atmospheric Cosmic Void Nebulas - Hidden during dark phases except specific swirls */}
         <motion.div 
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[800px] bg-slate-900/30 blur-[150px] rounded-full mix-blend-screen pointer-events-none"
-          animate={{ opacity: isDarkPhase ? 0 : (appState === 'FOCUSED_INITIAL' ? 0.8 : [0.6, 1, 0.6]) }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[820px] h-[720px] rounded-full pointer-events-none"
+          style={{
+            background: 'radial-gradient(circle, rgba(28,26,34,0.42) 0%, rgba(10,10,13,0.14) 46%, transparent 74%)',
+            filter: 'blur(110px)',
+            willChange: 'opacity',
+          }}
+          animate={{ opacity: isDarkPhase || isOpeningScreen ? 0 : [0.32, 0.48, 0.32] }}
           transition={{ duration: BREATH_DURATION, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ willChange: 'opacity' }}
         />
       </motion.div>
 
@@ -673,30 +693,70 @@ export default function App() {
       {(showPearl || appState === 'FRACTURE') && (
         <motion.div
           key="central-artifact"
-          className="relative z-10 w-[75vw] h-[75vw] max-w-[420px] max-h-[420px] md:max-w-[500px] md:max-h-[500px] rounded-full cursor-pointer pointer-events-auto"
+          className="relative z-10 w-[66vw] h-[66vw] max-w-[360px] max-h-[360px] min-w-[220px] min-h-[220px] md:w-[60vw] md:h-[60vw] md:max-w-[420px] md:max-h-[420px] rounded-full cursor-pointer pointer-events-auto"
           style={{ willChange: 'transform' }}
           onPointerDown={handlePearlPointerDown}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
           onPointerCancel={handlePointerUp}
+          onKeyDown={handleOpeningKeyDown}
+          onKeyUp={handlePointerUp}
+          onFocus={() => setIsOpeningFocused(true)}
+          onBlur={() => setIsOpeningFocused(false)}
+          role="button"
+          tabIndex={isOpeningScreen ? 0 : -1}
+          aria-label="Open the sealed experience left for you"
           initial={{ opacity: 0, x: 0 }}
           animate={{
             x: 0,
-            y: appState === 'RELEASED_ORBIT' ? -250 : isHoldingPearl ? 0 : isCoolingPhase ? 0 : [-8, 8, -8],
-            scale: appState === 'RELEASED_ORBIT' ? 0 : appState === 'RITUAL_HOLD' ? 0.9 : appState === 'RECORDING_VOICE' ? 0.98 : appState === 'VOICE_READY_TO_RELEASE' ? 0.95 : (appState === 'FOCUSED_INITIAL' ? 0.96 : isCoolingPhase ? 0.9 : [1, 1.03, 1]),
+            y: appState === 'RELEASED_ORBIT' ? -250 : isOpeningScreen ? 0 : isHoldingPearl ? 0 : isCoolingPhase ? 0 : [-8, 8, -8],
+            scale: isOpeningScreen ? (appState === 'FOCUSED_INITIAL' ? 0.935 : 1) : appState === 'RELEASED_ORBIT' ? 0 : appState === 'RITUAL_HOLD' ? 0.9 : appState === 'RECORDING_VOICE' ? 0.98 : appState === 'VOICE_READY_TO_RELEASE' ? 0.95 : isCoolingPhase ? 0.9 : [1, 1.03, 1],
             opacity: appState === 'REEMERGENCE' ? 0.3 : appState === 'RELEASED_ORBIT' ? 0 : isCoolingPhase ? 1 : 1, // Full opacity when cooled
+            rotateZ: isOpeningScreen ? (appState === 'FOCUSED_INITIAL' ? 1.4 : 0) : 0,
           }}
           transition={{
             x: appState === 'RELEASED_ORBIT' ? { duration: 4, ease: [0.65, 0, 0.35, 1] } : { duration: 0.5 },
-            y: appState === 'RELEASED_ORBIT' ? { duration: 4, ease: [0.65, 0, 0.35, 1] } : isCoolingPhase ? { type: 'spring', damping: 20, stiffness: 100 } : { duration: BREATH_DURATION * 1.5, repeat: Infinity, ease: 'easeInOut' },
+            y: appState === 'RELEASED_ORBIT' ? { duration: 4, ease: [0.65, 0, 0.35, 1] } : isOpeningScreen ? { duration: 0.7, ease: 'easeOut' } : isCoolingPhase ? { type: 'spring', damping: 20, stiffness: 100 } : { duration: BREATH_DURATION * 1.5, repeat: Infinity, ease: 'easeInOut' },
             scale: appState === 'RELEASED_ORBIT' ? { duration: 4, ease: [0.65, 0, 0.35, 1] } : appState === 'RECORDING_VOICE' ? { type: "spring", damping: 15, stiffness: 100 } : appState === 'FOCUSED_INITIAL'
               ? { duration: 0.8, ease: 'easeOut' }
               : appState === 'RITUAL_HOLD' ? { duration: RITUAL_HOLD_DURATION / 1000, ease: 'easeInOut' }
+              : isOpeningScreen ? { duration: 6.5, repeat: Infinity, ease: 'easeInOut' }
               : isCoolingPhase ? { duration: 0.5, ease: 'easeOut' }
               : { duration: BREATH_DURATION, repeat: Infinity, ease: 'easeInOut' },
-            opacity: appState === 'RELEASED_ORBIT' ? { duration: 4, ease: [0.65, 0, 0.35, 1] } : { duration: appState === 'REEMERGENCE' ? 2 : 0.5 }
+            opacity: appState === 'RELEASED_ORBIT' ? { duration: 4, ease: [0.65, 0, 0.35, 1] } : { duration: appState === 'REEMERGENCE' ? 2 : 0.5 },
+            rotateZ: { duration: 0.7, ease: 'easeOut' },
           }}
         >
+          {isOpeningScreen && (
+            <>
+              <motion.div
+                className="absolute inset-[-18%] rounded-full pointer-events-none"
+                style={{
+                  background: 'radial-gradient(circle, rgba(167,155,235,0.16) 0%, rgba(92,84,132,0.08) 26%, transparent 62%)',
+                  filter: 'blur(26px)',
+                }}
+                animate={{ opacity: appState === 'FOCUSED_INITIAL' ? 0.34 : isOpeningFocused ? 0.3 : [0.18, 0.24, 0.18], scale: appState === 'FOCUSED_INITIAL' ? 0.98 : 1 }}
+                transition={{
+                  opacity: appState === 'FOCUSED_INITIAL' ? { duration: 0.45, ease: 'easeOut' } : { duration: 6, repeat: Infinity, ease: 'easeInOut' },
+                  scale: { duration: 0.5, ease: 'easeOut' },
+                }}
+              />
+              <motion.div
+                className="absolute left-1/2 top-1/2 w-[140%] -translate-x-1/2 pointer-events-none text-center"
+                style={{ y: 'calc(50% + 150px)' }}
+                initial={false}
+                animate={{ opacity: appState === 'FOCUSED_INITIAL' ? 0.72 : 1 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+              >
+                <p className="text-[10px] sm:text-[11px] tracking-[0.38em] font-light text-white/58">
+                  SOMETHING WAS LEFT FOR YOU
+                </p>
+                <p className="mt-3 text-[9px] sm:text-[10px] tracking-[0.55em] font-light text-white/32">
+                  ENTER
+                </p>
+              </motion.div>
+            </>
+          )}
           
           {appState === 'FRACTURE' ? (
             <FracturedCrystal />
@@ -718,7 +778,11 @@ export default function App() {
               {/* Deep Glowing Cores */}
               <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none z-20">
                 <Suspense fallback={null}>
-                  <Xso3DPearl isActive={isHoldingPearl} color={appState === 'RITUAL_HOLD' || appState === 'RECORDING_VOICE' ? '#ff0055' : '#8b5cf6'} />
+                  <Xso3DPearl
+                    isActive={isHoldingPearl}
+                    openingMode={isOpeningScreen}
+                    color={appState === 'RITUAL_HOLD' || appState === 'RECORDING_VOICE' ? '#ff0055' : '#8b5cf6'}
+                  />
                 </Suspense>
               </div>
             </>

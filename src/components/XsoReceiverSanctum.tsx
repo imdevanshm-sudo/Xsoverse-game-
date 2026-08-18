@@ -7,17 +7,9 @@ import { usePinch } from '@use-gesture/react';
 import AudioReactiveSymphony from './AudioReactiveSymphony';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSpring as useFramerSpring } from 'framer-motion';
+import type { XsoPlayerMediaItem as MediaItem } from '../xso';
 
 export const GyroState = { enabled: false, alpha: 0, beta: 0, gamma: 0 };
-
-export interface MediaItem {
-  id: string;
-  type: 'image' | 'video' | 'audio';
-  url: string;
-  voiceNoteUrl?: string; // Additional audio for images
-  title?: string;
-  duration?: string;
-}
 
 export interface XsoReceiverSanctumProps {
   auraWeight?: [number, number]; 
@@ -494,7 +486,14 @@ function CameraRig({ targetPosition, targetLookAt, targetFov = 35 }: { targetPos
   );
 }
 
-export const AURA_TYPES = [
+interface AuraType {
+  name: string;
+  emoji: string;
+  color: string;
+  textures?: string[];
+}
+
+export const AURA_TYPES: AuraType[] = [
   { name: 'Ethereal', emoji: '✨', color: '#4d4dff' },
   { name: 'Heart', emoji: '❤️', color: '#ff4d4d' },
   { name: 'Fire', emoji: '🔥', color: '#ff4500' },

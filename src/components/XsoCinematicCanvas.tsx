@@ -2,15 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, animate } from 'framer-motion';
 import { XsoAudioDeck } from './XsoAudioDeck';
 import { XsoVideoWindow } from './XsoVideoWindow';
-
-export interface MediaItem {
-  id: string;
-  type: 'image' | 'video' | 'audio';
-  url: string;
-  voiceNoteUrl?: string; // Additional audio for images
-  title?: string;
-  duration?: string;
-}
+import type { XsoPlayerMediaItem as MediaItem } from '../xso';
 
 export interface XsoCinematicCanvasProps {
   auraWeight?: [number, number]; 
