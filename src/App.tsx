@@ -6,6 +6,32 @@ import { samplePlayerManifest, sampleXso } from './xso/sample';
 const XsoReceiverSanctum = lazy(() => import('./components/XsoReceiverSanctum'));
 const Xso3DPearl = lazy(() => import('./components/Xso3DPearl'));
 
+const XsoSeal = ({ className = "w-12 h-12" }: { className?: string }) => {
+  return (
+    <svg 
+      viewBox="0 0 100 100" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <circle cx="50" cy="50" r="40" stroke="rgba(255, 254, 250, 0.15)" strokeWidth="1" strokeDasharray="3 3" />
+      <circle cx="50" cy="50" r="34" stroke="rgba(255, 254, 250, 0.35)" strokeWidth="0.75" />
+      <path d="M44 50 H56 M50 44 V56" stroke="rgba(255, 254, 250, 0.45)" strokeWidth="0.75" />
+      <text 
+        x="50" 
+        y="53.5" 
+        fill="rgba(255, 254, 250, 0.75)" 
+        fontSize="6.5" 
+        fontFamily="Georgia, serif" 
+        letterSpacing="0.28em" 
+        textAnchor="middle"
+      >
+        XSO
+      </text>
+    </svg>
+  );
+};
+
 const BREATH_DURATION = 6;
 const INITIAL_HOLD_DURATION = 1800;
 const RITUAL_HOLD_DURATION = 4000;
@@ -748,11 +774,11 @@ export default function App() {
                 animate={{ opacity: appState === 'FOCUSED_INITIAL' ? 0.8 : 1 }}
                 transition={{ duration: 0.35, ease: 'easeOut' }}
               >
-                <p className="text-[11px] sm:text-[13px] md:text-[15px] tracking-[0.25em] font-light text-white/80 font-serif">
-                  SOMETHING WAS LEFT FOR YOU
+                <p className="text-[12px] sm:text-[14px] md:text-[15px] tracking-[0.16em] font-light text-[#eceae5] font-serif">
+                  Someone left this for you.
                 </p>
-                <p className="mt-8 text-[9px] sm:text-[10px] tracking-[0.4em] font-light text-white/40 uppercase">
-                  TOUCH TO OPEN
+                <p className="mt-7 text-[8.5px] sm:text-[9.5px] tracking-[0.22em] font-light text-white/30 uppercase">
+                  Touch to open
                 </p>
               </motion.div>
             </>
@@ -772,6 +798,21 @@ export default function App() {
                     animate={{ scale: [1, 1.1, 1.2], opacity: [0, 0.5, 0] }}
                     transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
                   />
+                )}
+              </AnimatePresence>
+
+              {/* The Intimate XSO Transition Seal */}
+              <AnimatePresence>
+                {appState === 'FOCUSED_INITIAL' && (
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none z-30"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.05 }}
+                    transition={{ duration: 0.7, ease: [0.33, 1, 0.68, 1] }}
+                  >
+                    <XsoSeal className="w-20 h-20 sm:w-24 sm:h-24" />
+                  </motion.div>
                 )}
               </AnimatePresence>
 
